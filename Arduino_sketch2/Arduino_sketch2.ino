@@ -16,6 +16,8 @@
 void processByte(uint8_t inByte);
 void processFrame();
 
+//delay between data bytes 22ms
+
 uint8_t byteIndex {0};
 uint8_t frameCount {0};  // Number of evaluated frames
 uint8_t dataBytes[16];  // Array to store the entire 16 byte packet
@@ -25,19 +27,20 @@ uint16_t numBadReadings {0};  // Number of missed frames (counter)
 uint16_t prevServo[7];  // Store prev. correct readings
 unsigned long prevUpdateTime {0};
 
-SoftwareSerial Serial1(2, 3);  // Spektrum serial port
+SoftwareSerial MySerial(10, 11);  // Spektrum serial port
 
 
 void setup() {
-    while (!Serial);  // Wait for serial console to open
+   // while (!Serial);  // Wait for serial console to open
     Serial.begin(115200);  // Arduino's port
-    Serial1.begin(115200);  // Spektrum's port
+    MySerial.begin(115200);  // Spektrum's port
 }
 
 
 void loop() {
-    if (Serial1.available() > 0) {
-        uint8_t incomingByte = Serial1.read();  // Get data!
+    if (MySerial.available()) {
+        uint8_t incomingByte = MySerial.read();  // Get data!
+        //Serial.print(incomingByte);
         processByte(incomingByte);
     }
 }
@@ -48,6 +51,7 @@ void processByte(uint8_t inByte) {
     if (currTime - prevUpdateTime > 10) {
         // 22ms delay between data frames has passed, reset index
         byteIndex = 0;
+        //Serial.print(1);
     }
 
     dataBytes[byteIndex] = inByte;  // Add byte to array
@@ -56,6 +60,7 @@ void processByte(uint8_t inByte) {
     if (byteIndex == sizeof(dataBytes)) {  // If the index is at 16
         // dataBytes is full, time to parse and extract channel
         // data/servo positions
+        ////Serial.print(1);
         processFrame();
         byteIndex = 0;
         frameCount++;
@@ -77,9 +82,10 @@ void processFrame() {
             uint8_t hiByte {dataBytes[ii]};
             uint8_t loByte {dataBytes[ii+1]};
             uint16_t servoVal{};
-            uint8_t chanID {(hiByte >> 3) & 0xf};  // Extract channel ID
+            uint8_t chanID {(hiByte >> 3) & 0xf}; //0x7800 // Extract channel ID
 
             // Make sure channel ID is less than 6 (range from 0 to 6)
+            //Serial.print(chanID+' ');
             if (chanID <= 6) {
                 // Convert two bytes in big-endian to int
                 // https://stackoverflow.com/a/2660326
@@ -95,6 +101,9 @@ void processFrame() {
                 // Use equation in DSMX datasheet to convert [0 2048] values
                 // to standard PWM range [~1000ms ~2000ms] with center at 1500ms
                 servo[chanID] = (0.583f * servoVal) + 903;
+                //Serial.print(servo[chanID]);
+                //Serial.print(chanID);
+               // Serial.print("\n");
             }
         }
         // memcpy(dest, src, sizeof);
